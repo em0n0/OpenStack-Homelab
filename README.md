@@ -300,7 +300,9 @@ sudo bash deploy.sh --verify
 ---
 
 ## 📚 Useful Resources
-
 - [OpenStack Docs](https://docs.openstack.org)
 - [Ubuntu OpenStack Guide](https://ubuntu.com/openstack/docs)
 - [OpenStack 2024.1 Release Notes](https://releases.openstack.org/caracal/)
+
+## 📄 License
+MIT
