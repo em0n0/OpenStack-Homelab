@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# uninstall.sh — Remove OpenStack completely from this server  (v4)
+# uninstall.sh — Remove OpenStack Homelably from this server  (v4)
 # =============================================================================
 # WARNING: This is destructive and irreversible!
 #
@@ -10,6 +10,16 @@
 # =============================================================================
 
 set -euo pipefail
+
+# ─── FLAGS ────────────────────────────────────────────────────────────────────
+DRY_RUN=false
+SELECTIVE=false
+SELECTIVE_COMPONENTS=()
+for arg in "$@"; do
+    [[ "${arg}" == "--dry-run"   ]] && DRY_RUN=true
+    [[ "${arg}" == "--selective" ]] && SELECTIVE=true
+done
+export DRY_RUN
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -135,16 +145,28 @@ echo -e "  Stopping OpenStack services..."
 SERVICES=(
     nova-api nova-conductor nova-scheduler nova-compute nova-novncproxy
     neutron-server neutron-linuxbridge-agent neutron-dhcp-agent neutron-metadata-agent
-    glance-api placement-api apache2
+    glance-api placement-api apache2 keystone
     rabbitmq-server memcached etcd
     mariadb mysql
+    cinder-api cinder-scheduler cinder-volume
+    swift-proxy heat-api heat-engine
+    barbican-api octavia-api octavia-worker
+    manila-api designate-central designate-api
 )
 
 for svc in "${SERVICES[@]}"; do
     if systemctl is-active --quiet "${svc}" 2>/dev/null; then
-        run systemctl stop "${svc}"
-        run systemctl disable "${svc}" 2>/dev/null || true
-        echo -e "  ${GREEN}✔${NC} Stopped: ${svc}"
+        if [[ "${DRY_RUN}" == "true" ]]; then
+            echo -e "  ${DIM}[DRY-RUN]${NC} Would stop: ${svc}"
+            _mark "service:${svc}" "skipped(dry-run)"
+        else
+            run systemctl stop "${svc}"
+            run systemctl disable "${svc}" 2>/dev/null || true
+            echo -e "  ${GREEN}✔${NC} Stopped: ${svc}"
+            _mark "service:${svc}" "stopped"
+        fi
+    else
+        _mark "service:${svc}" "not-running"
     fi
 done
 
@@ -158,10 +180,23 @@ PKGS=(
     glance placement-api keystone openstack-dashboard
     rabbitmq-server memcached etcd
     mariadb-server python3-openstackclient
+    cinder-api cinder-scheduler cinder-volume
+    swift swift-proxy heat-common barbican-api
+    octavia-api octavia-worker manila-api designate-common
 )
 
 for pkg in "${PKGS[@]}"; do
-    run apt-get purge -y "${pkg}" 2>/dev/null || true
+    if dpkg -l "${pkg}" &>/dev/null 2>&1; then
+        if [[ "${DRY_RUN}" == "true" ]]; then
+            echo -e "  ${DIM}[DRY-RUN]${NC} Would purge: ${pkg}"
+            _mark "package:${pkg}" "skipped(dry-run)"
+        else
+            run apt-get purge -y "${pkg}" 2>/dev/null || true
+            _mark "package:${pkg}" "purged"
+        fi
+    else
+        _mark "package:${pkg}" "not-installed"
+    fi
 done
 
 run apt-get autoremove -y
@@ -235,10 +270,15 @@ fi
 
 # ─── DONE ─────────────────────────────────────────────────────────────────────
 echo ""
+_print_removal_summary
+
 if [[ "${DRY_RUN}" == "true" ]]; then
     echo -e "  ${CYAN}${BOLD}Dry-run complete.${NC} No changes were made."
     echo -e "  ${DIM}Re-run without --dry-run to perform the actual removal.${NC}"
 else
     echo -e "  ${GREEN}${BOLD}✔ OpenStack has been fully removed from this server.${NC}"
+    echo ""
+    echo -e "  ${DIM}To reinstall:  sudo bash deploy.sh --wizard${NC}"
+    echo -e "  ${DIM}Backups kept:  ${BACKUP_PATH:-/var/backups/openstack}${NC}"
 fi
 echo ""
