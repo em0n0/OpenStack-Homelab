@@ -59,7 +59,7 @@ sudo bash deploy.sh --full
 | Disk | 50 GB free | 100+ GB |
 | Network | 1 NIC | 2 NICs (see [Network Architecture](docs/ARCHITECTURE.md)) |
 
-> ⚠️ **Use a fresh Ubuntu 24.04 installation.** Do not run on a server with existing services — the installer modifies MariaDB, Apache, networking, and system packages.
+> **Use a fresh Ubuntu 24.04 installation.** Do not run on a server with existing services — the installer modifies MariaDB, Apache, networking, and system packages.
 
 Pre-flight checks (distro, disk space, RAM, internet) run automatically before deployment begins.
 
@@ -166,7 +166,7 @@ ACME_EMAIL="admin@yourdomain.com"
 OPENSTACK_DOMAIN="cloud.yourdomain.com"
 ```
 
-> 💡 **Security tip:** Move passwords out of `main.env` and into `configs/.secrets.env` (mode `600`). That file is gitignored and overrides `main.env` at runtime. Never commit `main.env` with real passwords.
+> **Security tip:** Move passwords out of `main.env` and into `configs/.secrets.env` (mode `600`). That file is gitignored and overrides `main.env` at runtime. Never commit `main.env` with real passwords.
 
 ---
 
